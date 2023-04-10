@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+  </head>
+
+  <body class="m-4">
+    <div id="root">
+      <div class="d-flex align-items-center">
+        <h1>Добавление данных</h1>
+        <a
+          :href="allDataHref"
+          :disabled="!tableName"
+          target="_blank"
+          class="ml-auto"
+          >Открыть таблицу данных для таблицы {{tableName}}</a
+        >
+      </div>
+      <form @submit="onSubmit" class="d-flex flex-column" style="gap: 1rem">
+        <div>
+          <label for="table-name">Имя таблицы:</label>
+          <input v-model="tableName" name="table-name" id="table-name" />
+        </div>
+
+        <fieldset>
+          <legend class="d-flex">
+            <h2 class="mr-5">Столбцы</h2>
+            <button @click="addField" class="btn btn-secondary" type="button">
+              Добавить столбец
+            </button>
+          </legend>
+
+          <template v-if="!fields.length">
+            <div class="text-center" data-test-id="no-data-message">
+              Нет добавленных столбцов :(
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-for="(field, index) of fields"
+              class="d-flex flex-column border-bottom py-2"
+              style="gap: 1rem"
+            >
+              <div class="d-flex table-field" style="gap: 0.5rem">
+                <label> Имя столбца </label>
+                <input class="col" v-model="field.name" />
+              </div>
+
+              <div class="d-flex table-field" style="gap: 0.5rem">
+                <label> Тип столбца </label>
+                <select class="col" v-model="field.type" :disabled="field.type">
+                  <option value="text">Строка</option>
+                  <option value="number">Число</option>
+                  <option value="checkbox">Булево</option>
+                </select>
+              </div>
+
+              <div class="d-flex table-field" style="gap: 0.5rem">
+                <label> Значение столбца </label>
+                <input class="col" v-if="!field.type" disabled />
+                <input
+                  class="col"
+                  v-if="field.type === 'text'"
+                  v-model="field.value"
+                  type="text"
+                />
+                <input
+                  class="col"
+                  v-if="field.type === 'number'"
+                  v-model.number="field.value"
+                  type="number"
+                />
+                <input
+                  class="col"
+                  v-if="field.type === 'checkbox'"
+                  v-model="field.value"
+                  type="checkbox"
+                />
+              </div>
+            </div>
+          </template>
+        </fieldset>
+
+        <button class="btn btn-primary" type="submit" :disabled="isInvalid">
+          Добавить данные в таблицу
+        </button>
+
+        <div class="message-container">{{message}}</div>
+
+        {{fields}}
+      </form>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#root",
+        data: {
+          tableName: "",
+          fields: [],
+          message: "",
+        },
+        methods: {
+          addField() {
+            this.fields.push({ name: "", type: null, value: null });
+          },
+          async onSubmit(e) {
+            e.preventDefault();
+
+            if (this.isInvalid) return;
+
+            try {
+              response = await fetch(
+                `http://localhost:8000/insert?name=${this.tableName}`,
+                {
+                  method: "POST",
+                  body: JSON.stringify(
+                    this.fields.reduce((acc, { name, type }) => {
+                      acc[name] = type;
+
+                      return acc;
+                    }, {})
+                  ),
+                }
+              );
+              const result = await response.json();
+            
+              this.message = result.message;
+            } catch (e) {
+              this.message = e;
+            }
+          },
+        },
+        computed: {
+          allDataHref() {
+            return `http://localhost:8000/index.html?name=${this.tableName}`;
+          },
+
+          isInvalid() {
+            return (
+              this.tableName === "" ||
+              !this.fields.length ||
+              this.fields.some(
+                ({ value, name, type }) => value === null || !name || !type
+              )
+            );
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
